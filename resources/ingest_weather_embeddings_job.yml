@@ -1,0 +1,48 @@
+# Databricks Workflow that runs notebooks/Weather Data to Vector Embeddings.py on
+# a schedule. The notebook queries the `locations` table for tracked locations,
+# fetches weather data from Open-Meteo API, and generates vector embeddings for
+# semantic weather search in the Weather Prediction MCP Server.
+#
+# Deploy: databricks bundle deploy -t dev
+# Run once manually: databricks bundle run ingest_weather_embeddings_job -t dev
+
+resources:
+  jobs:
+    ingest_weather_embeddings_job:
+      name: "[${bundle.target}] Ingest Weather Embeddings"
+
+      # Runs every 6 hours to keep weather data fresh (00:00, 06:00, 12:00, 18:00 UTC)
+      # Weather conditions change frequently, so more frequent updates than daily news
+      schedule:
+        quartz_cron_expression: "0 0 */6 * * ?"
+        timezone_id: "UTC"
+        pause_status: PAUSED  # flip to UNPAUSED once you've validated a manual run
+
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+
+      max_concurrent_runs: 1
+
+      job_clusters:
+        - job_cluster_key: default_cluster
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+            data_security_mode: SINGLE_USER
+
+      tasks:
+        - task_key: ingest_weather_embeddings
+          job_cluster_key: default_cluster
+          notebook_task:
+            notebook_path: ../notebooks/Weather Data to Vector Embeddings.py
+            base_parameters:
+              locations_table_name: "locations"
+              current_weather_table_name: "current_weather"
+              forecasts_table_name: "weather_forecasts"
+              embeddings_table_name: "weather_embeddings"
+              embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+              openmeteo_api_base_url: "https://api.open-meteo.com/v1"
+              forecast_days: "7"
+              max_requests_per_minute: "60"

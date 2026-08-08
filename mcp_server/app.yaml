@@ -8,6 +8,14 @@ resources:
       path: ./requirements.txt
 
 env:
+  - name: LAKEBASE_HOST
+    value: "ep-noisy-king-d8v8sm9z.database.us-east-2.cloud.databricks.com"
+  - name: LAKEBASE_DATABASE
+    value: "databricks-postgres"
+  - name: LAKEBASE_USER
+    value: "student"
+  - name: LAKEBASE_PASSWORD
+    value: "npg_Siw15JtmDrOz"
   - name: LAKEBASE_SECRET_SCOPE
     value: "database"
   - name: LAKEBASE_SECRET_KEY

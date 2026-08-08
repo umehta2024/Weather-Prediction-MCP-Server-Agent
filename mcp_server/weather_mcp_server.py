@@ -5,6 +5,7 @@ Databricks Agent Bricks agent can call them like any other tool:
     - get_current_weather(latitude, longitude, city_name) - Current weather conditions (by coordinates or city)
     - get_forecast(latitude, longitude, city_name, forecast_days) - Current + forecast (by coordinates or city)
     - optimal_running_weather(latitude, longitude, city_name) - Check if conditions are ideal for running
+    - check_humidifier_needed(latitude, longitude, city_name) - Check if humidifier should be turned on (humidity > 60%)
     - interpret_weather_code(code) - Convert WMO weather codes to descriptions
     - vector_search(query, limit, search_type) - Semantic search over weather data
 
@@ -730,6 +731,108 @@ def interpret_weather_code(code: int) -> dict:
     return {
         "code": code,
         "description": description,
+    }
+
+
+@mcp.tool
+def check_humidifier_needed(
+    latitude: float = None,
+    longitude: float = None,
+    city_name: str = None
+) -> dict:
+    """
+    Check if indoor humidifier should be turned on based on current humidity levels.
+    
+    Recommends turning on a humidifier when outdoor humidity is above 60%,
+    which often indicates high indoor humidity that can cause discomfort,
+    mold growth, and health issues.
+    
+    Provide either coordinates (latitude + longitude) OR city_name, not both.
+    
+    Supported cities: Berlin, New York, London, Tokyo, Paris, Sydney, 
+    Mumbai, Singapore, Dubai, Toronto
+    
+    Args:
+        latitude: Latitude coordinate (e.g., 52.52 for Berlin). Required if city_name not provided.
+        longitude: Longitude coordinate (e.g., 13.41 for Berlin). Required if city_name not provided.
+        city_name: Name of city (e.g., "Berlin", "New York"). Required if coordinates not provided.
+    
+    Returns:
+        Dict with recommendation, current humidity, and assessment details
+    
+    Examples:
+        check_humidifier_needed(latitude=52.52, longitude=13.41)
+        check_humidifier_needed(city_name="Berlin")
+    """
+    # Validate input: either coordinates or city, not both
+    has_coords = latitude is not None and longitude is not None
+    has_city = city_name is not None
+    
+    if not has_coords and not has_city:
+        return {"error": "Must provide either (latitude, longitude) or city_name", "success": False}
+    
+    if has_coords and has_city:
+        return {"error": "Provide either coordinates OR city_name, not both", "success": False}
+    
+    # Fetch current weather data
+    if has_city:
+        weather_data = weather_broker.get_weather_by_city(city_name, forecast_days=1)
+        location_label = city_name
+    else:
+        weather_data = weather_broker.get_weather_forecast(latitude, longitude, forecast_days=1)
+        location_label = f"{latitude},{longitude}"
+    
+    current = weather_data.get("current", {})
+    
+    # Extract humidity
+    humidity = current.get("humidity")
+    
+    # Check if we have humidity data
+    if humidity is None:
+        return {
+            "error": "Unable to retrieve humidity data",
+            "success": False,
+            "location": location_label
+        }
+    
+    # Define humidity threshold
+    HUMIDITY_THRESHOLD = 60
+    
+    # Check if humidifier is needed
+    needs_humidifier = humidity > HUMIDITY_THRESHOLD
+    
+    # Build recommendation
+    if needs_humidifier:
+        recommendation = f"⚠️ High humidity detected! Consider turning on your humidifier or dehumidifier to reduce indoor moisture levels."
+        status = "action_recommended"
+        severity = "moderate" if humidity <= 70 else "high" if humidity <= 80 else "very_high"
+    else:
+        recommendation = "Humidity levels are acceptable. No action needed at this time."
+        status = "normal"
+        severity = "low"
+    
+    # Additional context
+    health_impact = []
+    if humidity > 60:
+        health_impact.append("High humidity can promote mold and mildew growth")
+    if humidity > 70:
+        health_impact.append("May cause discomfort and respiratory issues")
+    if humidity > 80:
+        health_impact.append("Can trigger allergies and worsen asthma symptoms")
+    
+    return {
+        "success": True,
+        "location": location_label,
+        "status": status,
+        "recommendation": recommendation,
+        "needs_action": needs_humidifier,
+        "current_humidity": {
+            "percent": humidity,
+            "severity": severity,
+            "threshold": HUMIDITY_THRESHOLD
+        },
+        "health_impact": health_impact if health_impact else ["Humidity levels are within healthy range"],
+        "ideal_range": "30% to 60% for optimal indoor comfort"
     }
 
 

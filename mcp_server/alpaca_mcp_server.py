@@ -1,28 +1,14 @@
 """
-Alpaca Markets paper-trading MCP server.
+Weather Forecasting MCP server.
 
-Exposes paper-trading tools over MCP (Model Context Protocol) so a
+Exposes weather forecasting tools over MCP (Model Context Protocol) so a
 Databricks Agent Bricks agent can call them like any other tool:
-    - get_quote(symbol)
-    - place_trade(account_id, symbol, side, quantity)
-    - get_positions(account_id)
-    - get_account_summary(account_id)
-    - get_order_history(account_id, limit)
-    - get_balance(account_id)
-    - get_current_user()
+    - get_weather(latitude, longitude, forecast_days)
+    - get_weather_by_city(city_name, forecast_days)
+    - interpret_weather_code(code)
 
-These tools are backed by Alpaca Markets' real, hosted paper-trading
-account (see alpaca_broker.py), so students can safely wire an Agent
-Bricks agent to place real (but fake-money) trades without a real
-brokerage account or risk of real money moving. account_id is accepted
-for signature compatibility but is not used to select an account - Alpaca
-paper trading is one account per API key pair.
-
-Swap-in-a-real-broker note: to point this at a different broker instead,
-keep the same 5 tool signatures below and replace the alpaca_broker.*
-calls inside each tool with calls to that broker's SDK/API - the MCP
-surface for the agent does not need to change. The original Lakebase-
-simulated engine is preserved in paper_broker.py for reference.
+These tools are backed by Open-Meteo's free public API (see weather_broker.py),
+so students can safely retrieve weather data without authentication or API keys.
 
 Deploy this as its own Databricks App (same app.yaml + FastMCP entrypoint
 pattern documented at

@@ -12,7 +12,7 @@ import getpass
 
 w = WorkspaceClient()
 
-w.secrets.create_scope(scope="database")
+#w.secrets.create_scope(scope="database")
 
 w.secrets.put_secret(
     scope="database",
@@ -26,8 +26,3 @@ w.secrets.put_acl(
     permission=workspace.AclPermission.READ,
 )
 
-w.secrets.put_acl(
-    scope="massive",
-    principal="users",
-    permission=workspace.AclPermission.READ,
-)
